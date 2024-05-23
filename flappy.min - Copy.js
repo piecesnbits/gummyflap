@@ -11848,385 +11848,281 @@ var DEBUG,
   (tubesTimer = null),
   (floor = Math.floor),
   (main = function () {
-    var createTube, spawnTubes, handleInvCollision, endGame, handleFlap, preloadAssets, createGame, resetGame, startGame, updateGame, debugRender, gameConfig, game;
+    var e, t, n, r, i, s, o, u, a, f, l, c, h;
+    (a = function (e, t) {
+      var n, i, s;
+      return (
+        (n = null),
+        (i = t ? "tubeTop" : "tubeBottom"),
+        (s = floor(t ? e - OPENING / 2 - 320 : e + OPENING / 2)),
+        deadTubeTops.length > 0 && "tubeTop" === i
+          ? ((n = deadTubeTops.pop().revive()), n.reset(r.world.width, s))
+          : deadTubeBottoms.length > 0 && "tubeBottom" === i
+          ? ((n = deadTubeBottoms.pop().revive()), n.reset(r.world.width, s))
+          : ((n = tubes.create(r.world.width, s, i)), (n.body.allowGravity = !1)),
+        (n.body.velocity.x = -SPEED),
+        n
+      );
+    }),
+      (f = function () {
+        var e, t, n, i;
+        tubes.forEachAlive(function (e) {
+          e.x + e.width < r.world.bounds.left && ("tubeTop" === e.key && deadTubeTops.push(e.kill()), "tubeBottom" === e.key && deadTubeBottoms.push(e.kill()));
+        }),
+          invs.forEachAlive(function (e) {
+            e.x + e.width < r.world.bounds.left && deadInvs.push(e.kill());
+          }),
+          (i = r.world.height / 2 + (Math.random() - 0.5) * r.world.height * 0.2);
+        console.log("pieces new tube pair.......", i),
+          (e = a(i)),
+          (n = a(i, !0)),
+          deadInvs.length > 0
+            ? (t = deadInvs
+                .pop()
+                .revive()
+                .reset(n.x + n.width / 2, 0))
+            : ((t = invs.create(n.x + n.width / 2, 0)), (t.width = 2), (t.height = r.world.height), (t.body.allowGravity = !1)),
+          (t.body.velocity.x = -SPEED);
+      }),
+      (e = function (e, t) {
+        invs.remove(t), (score += 1), scoreText.setText(score), scoreSnd.play();
+      }),
+      (u = function () {
+        var hiscore;
 
-    // Function to create a tube
-    createTube = function (y, isTop) {
-      var tube, key, positionY;
-      tube = null;
-      key = isTop ? "tubeTop" : "tubeBottom";
-      positionY = Math.floor(isTop ? y - OPENING / 2 - 320 : y + OPENING / 2);
+        // Set game over state
+        gameOver = true;
+        updateLives();
 
-      if (isTop && deadTubeTops.length > 0) {
-        tube = deadTubeTops.pop().revive();
-        tube.reset(game.world.width, positionY);
-      } else if (!isTop && deadTubeBottoms.length > 0) {
-        tube = deadTubeBottoms.pop().revive();
-        tube.reset(game.world.width, positionY);
-      } else {
-        tube = tubes.create(game.world.width, positionY, key);
-        tube.body.allowGravity = false;
-      }
-      tube.body.velocity.x = -SPEED;
-      return tube;
-    };
-
-    // Function to spawn new tubes
-    spawnTubes = function () {
-      var tubeTop, tubeBottom, inv;
-
-      tubes.forEachAlive(function (tube) {
-        if (tube.x + tube.width < game.world.bounds.left) {
-          if (tube.key === "tubeTop") {
-            deadTubeTops.push(tube.kill());
-          } else if (tube.key === "tubeBottom") {
-            deadTubeBottoms.push(tube.kill());
-          }
+        // Adjust bird's velocity and animation
+        if (bird.body.velocity.y > 0) {
+          bird.body.velocity.y = 100;
         }
-      });
+        bird.animations.stop();
+        bird.frame = 1;
 
-      invs.forEachAlive(function (inv) {
-        if (inv.x + inv.width < game.world.bounds.left) {
-          deadInvs.push(inv.kill());
-        }
-      });
+        // Update instruction text to try again
+        instText.setText(try_again);
+        instText.renderable = true;
 
-      var tubeY = game.world.height / 2 + (Math.random() - 0.5) * game.world.height * 0.2;
-      console.log("pieces new tube pair.......", tubeY);
+        // Retrieve and update high score
+        hiscore = window.localStorage.getItem("hiscore");
+        hiscore = hiscore ? hiscore : score;
+        hiscore = score > parseInt(hiscore, 10) ? score : hiscore;
+        window.localStorage.setItem("hiscore", hiscore);
 
-      tubeTop = createTube(tubeY, true);
-      tubeBottom = createTube(tubeY, false);
+        // Display game over text with high score
+        gameOverText.setText(game_over + "\n\n" + high_score + "\n\n" + hiscore);
+        gameOverText.renderable = true;
 
-      if (deadInvs.length > 0) {
-        inv = deadInvs
-          .pop()
-          .revive()
-          .reset(tubeBottom.x + tubeBottom.width / 2, 0);
-      } else {
-        inv = invs.create(tubeBottom.x + tubeBottom.width / 2, 0);
-        inv.width = 2;
-        inv.height = game.world.height;
-        inv.body.allowGravity = false;
-      }
-      inv.body.velocity.x = -SPEED;
-    };
-
-    // Function to handle collision with invisible obstacles
-    handleInvCollision = function (bird, inv) {
-      invs.remove(inv);
-      score += 1;
-      scoreText.setText(score);
-      scoreSnd.play();
-    };
-
-    // Function to end the game
-    endGame = function () {
-      var hiscore;
-
-      // Set game over state
-      gameOver = true;
-
-      lives_left.setText(`Lives:${updateLives()}`);
-
-      // Adjust bird's velocity and animation
-      if (bird.body.velocity.y > 0) {
-        bird.body.velocity.y = 100;
-      }
-      bird.animations.stop();
-      bird.frame = 1;
-
-      // Update instruction text to try again
-      instText.setText(try_again);
-      instText.renderable = true;
-
-      // Retrieve and update high score
-      hiscore = window.localStorage.getItem("hiscore");
-      hiscore = hiscore ? hiscore : score;
-      hiscore = score > parseInt(hiscore, 10) ? score : hiscore;
-      window.localStorage.setItem("hiscore", hiscore);
-
-      // Display game over text with high score
-      gameOverText.setText(game_over + "\n\n" + high_score + "\n\n" + hiscore);
-      gameOverText.renderable = true;
-
-      // Stop all tube movements
-      tubes.forEachAlive(function (tube) {
-        tube.body.velocity.x = 0;
-      });
-
-      // Stop all invisible obstacles
-      invs.forEach(function (inv) {
-        inv.body.velocity.x = 0;
-      });
-
-      // Remove the tubes timer and set a restart delay
-      game.time.events.remove(tubesTimer);
-      game.time.events.add(1000, function () {
-        game.input.onTap.addOnce(function () {
-          resetGame();
-          swooshSnd.play();
-        });
-      });
-
-      // Play hurt sound effect
-      hurtSnd.play();
-    };
-
-    // Function to handle flap action
-    handleFlap = function () {
-      var flapTween;
-      if (!gameStarted) startGame();
-
-      if (!gameOver) {
-        bird.body.gravity.y = 0;
-        bird.body.velocity.y = -100;
-
-        flapTween = game.add.tween(bird.body.velocity).to({ y: -FLAP }, 25, Phaser.Easing.Bounce.In, true);
-        flapTween.onComplete.add(function () {
-          bird.body.gravity.y = GRAVITY;
+        // Stop all tube movements
+        tubes.forEachAlive(function (tube) {
+          tube.body.velocity.x = 0;
         });
 
-        flapSnd.play();
-        console.log("pieces... flapped");
-      }
-    };
-
-    // Function to preload assets
-    preloadAssets = function () {
-      var assets = {
-        spritesheet: { bird: [bird_picture, 36, 26] },
-        image: { tubeTop: [tube1_picture], tubeBottom: [tube2_picture], ground: [ground_picture], bg: [bg_picture] },
-        audio: { flap: [wing_sfx], score: [point_sfx], hurt: [hit_sfx], fall: [die_sfx], swoosh: [swooshing_sfx] },
-      };
-
-      Object.keys(assets).forEach(function (type) {
-        Object.keys(assets[type]).forEach(function (asset) {
-          game.load[type].apply(game.load, [asset].concat(assets[type][asset]));
+        // Stop all invisible obstacles
+        invs.forEach(function (inv) {
+          inv.body.velocity.x = 0;
         });
-      });
-    };
 
-    // Function to create the game
-    createGame = function () {
-      var aspectRatio;
+        // Remove the tubes timer and set a restart delay
+        r.time.events.remove(tubesTimer);
+        r.time.events.add(1000, function () {
+          r.input.onTap.addOnce(function () {
+            o();
+            swooshSnd.play();
+          });
+        });
 
-      // Calculate aspect ratio
-      aspectRatio = window.innerWidth / window.innerHeight;
+        // Play hurt sound effect
+        hurtSnd.play();
+      }),
+      (n = function () {
+        var e;
+        gameStarted || l(),
+          gameOver ||
+            ((bird.body.gravity.y = 0),
+            (bird.body.velocity.y = -100),
+            (e = r.add.tween(bird.body.velocity).to({ y: -FLAP }, 25, Phaser.Easing.Bounce.In, !0)),
+            e.onComplete.add(function () {
+              return (bird.body.gravity.y = GRAVITY);
+            }),
+            flapSnd.play(),
+            console.log("pieces... flapped"));
+      }),
+      (i = function () {
+        var e;
+        (e = {
+          spritesheet: { bird: [bird_picture, 36, 26] },
+          image: { tubeTop: [tube1_picture], tubeBottom: [tube2_picture], ground: [ground_picture], bg: [bg_picture] },
+          audio: { flap: [wing_sfx], score: [point_sfx], hurt: [hit_sfx], fall: [die_sfx], swoosh: [swooshing_sfx] },
+        }),
+          Object.keys(e).forEach(function (t) {
+            Object.keys(e[t]).forEach(function (n) {
+              r.load[t].apply(r.load, [n].concat(e[t][n]));
+            });
+          });
+      }),
+      (t = function () {
+        var aspectRatio;
 
-      // Hide the loading screen
-      document.querySelector("#loading").style.display = "none";
+        // Calculate aspect ratio
+        aspectRatio = window.innerWidth / window.innerHeight;
 
-      // Disable canvas smoothing
-      Phaser.Canvas.setSmoothingEnabled(game.context, false);
+        // Hide the loading screen
+        document.querySelector("#loading").style.display = "none";
 
-      // Set the stage scale mode and screen size
-      game.stage.scaleMode = Phaser.StageScaleMode.SHOW_ALL;
-      game.stage.scale.setScreenSize(true);
+        // Disable canvas smoothing
+        Phaser.Canvas.setSmoothingEnabled(r.context, false);
 
-      // Set the world dimensions
-      game.world.width = WIDTH;
-      game.world.height = HEIGHT;
+        // Set the stage scale mode and screen size
+        r.stage.scaleMode = Phaser.StageScaleMode.SHOW_ALL;
+        r.stage.scale.setScreenSize(true);
 
-      // Add background sprite
-      bg = game.add.tileSprite(0, 0, WIDTH, HEIGHT, "bg");
+        // Set the world dimensions
+        r.world.width = WIDTH;
+        r.world.height = HEIGHT;
 
-      // Create groups for tubes and invisible obstacles
-      tubes = game.add.group();
-      invs = game.add.group();
+        // Add background sprite
+        bg = r.add.tileSprite(0, 0, WIDTH, HEIGHT, "bg");
 
-      // Add and configure the bird sprite
-      bird = game.add.sprite(0, 0, "bird");
-      bird.anchor.setTo(0.5, 0.5);
-      bird.animations.add("fly", [0, 1, 2], 10, true);
-      bird.body.collideWorldBounds = true;
-      bird.body.setPolygon(24, 1, 34, 16, 30, 32, 20, 24, 12, 34, 2, 12, 14, 2);
+        // Create groups for tubes and invisible obstacles
+        tubes = r.add.group();
+        invs = r.add.group();
 
-      // Add ground sprite and scale it
-      ground = game.add.tileSprite(0, GROUND_Y, WIDTH, GROUND_HEIGHT, "ground");
-      ground.tileScale.setTo(SCALE, SCALE);
+        // Add and configure the bird sprite
+        bird = r.add.sprite(0, 0, "bird");
+        bird.anchor.setTo(0.5, 0.5);
+        bird.animations.add("fly", [0, 1, 2], 10, true);
+        bird.body.collideWorldBounds = true;
+        bird.body.setPolygon(24, 1, 34, 16, 30, 32, 20, 24, 12, 34, 2, 12, 14, 2);
 
-      // Add score text
-      scoreText = game.add.text(game.world.width / 2, game.world.height / 4, "", {
-        font: '16px "Press Start 2P"',
-        fill: title_fillcolor,
-        stroke: title_strokecolor,
-        strokeThickness: 4,
-        align: "center",
-      });
-      scoreText.anchor.setTo(0.5, 0.5);
+        // Add ground sprite and scale it
+        ground = r.add.tileSprite(0, GROUND_Y, WIDTH, GROUND_HEIGHT, "ground");
+        ground.tileScale.setTo(SCALE, SCALE);
 
-      // Add score text
-      let initial_lives = gummy_lives;
-      lives_left = game.add.text(5, 5, `Lives:${initial_lives}`, {
-        font: '8px "Press Start 2P"',
-        fill: title_fillcolor,
-        stroke: title_strokecolor,
-        strokeThickness: 3,
-        align: "center",
-      });
-      lives_left.anchor.setTo(0, 0);
+        // Add score text
+        scoreText = r.add.text(r.world.width / 2, r.world.height / 4, "", { font: '16px "Press Start 2P"', fill: title_fillcolor, stroke: title_strokecolor, strokeThickness: 4, align: "center" });
+        scoreText.anchor.setTo(0.5, 0.5);
 
-      // Add instruction text
-      instText = game.add.text(game.world.width / 2, game.world.height - game.world.height / 4, "", {
-        font: '8px "Press Start 2P"',
-        fill: score_fillcolor,
-        stroke: score_strokecolor,
-        strokeThickness: 4,
-        align: "center",
-      });
-      instText.anchor.setTo(0.5, 0.5);
+        // Add instruction text
+        instText = r.add.text(r.world.width / 2, r.world.height - r.world.height / 4, "", { font: '8px "Press Start 2P"', fill: score_fillcolor, stroke: score_strokecolor, strokeThickness: 4, align: "center" });
+        instText.anchor.setTo(0.5, 0.5);
 
-      // Add game over text
-      gameOverText = game.add.text(game.world.width / 2, game.world.height / 2, "", {
-        font: '16px "Press Start 2P"',
-        fill: game_over_fillcolor,
-        stroke: game_over_strokecolor,
-        strokeThickness: 4,
-        align: "center",
-      });
-      gameOverText.anchor.setTo(0.5, 0.5);
-      gameOverText.scale.setTo(SCALE, SCALE);
+        // Add game over text
+        gameOverText = r.add.text(r.world.width / 2, r.world.height / 2, "", { font: '16px "Press Start 2P"', fill: game_over_fillcolor, stroke: game_over_strokecolor, strokeThickness: 4, align: "center" });
+        gameOverText.anchor.setTo(0.5, 0.5);
+        gameOverText.scale.setTo(SCALE, SCALE);
 
-      // Add audio for game events
-      flapSnd = game.add.audio("flap");
-      scoreSnd = game.add.audio("score");
-      hurtSnd = game.add.audio("hurt");
-      fallSnd = game.add.audio("fall");
-      swooshSnd = game.add.audio("swoosh");
+        // Add audio for game events
+        flapSnd = r.add.audio("flap");
+        scoreSnd = r.add.audio("score");
+        hurtSnd = r.add.audio("hurt");
+        fallSnd = r.add.audio("fall");
+        swooshSnd = r.add.audio("swoosh");
 
-      // Add input listener for game start
-      game.input.onDown.add(handleFlap);
+        // Add input listener for game start
+        r.input.onDown.add(n);
 
-      // Initialize game state
-      resetGame();
-    };
+        // Initialize game state
+        o();
+      }),
+      (o = function () {
+        // Set game state variables
+        gameStarted = false;
+        gameOver = false;
+        score = 0;
 
-    // Function to reset the game
-    resetGame = function () {
-      // Set game state variables
-      gameStarted = false;
-      gameOver = false;
-      score = 0;
-
-      // Update UI texts
-      if (gummy_lives == 0) {
-        scoreText.setText(`No lives left`);
-        instText.setText(`wait for your lives to refill`);
-      } else {
+        // Update UI texts
         scoreText.setText(game_title);
         instText.setText(game_instructions);
-      }
 
-      // Hide the game over text
-      gameOverText.renderable = false;
+        // Hide the game over text
+        gameOverText.renderable = false;
 
-      // Disable gravity for the bird
-      bird.body.allowGravity = false;
+        // Disable gravity for the bird
+        bird.body.allowGravity = false;
 
-      // Reset bird's position and properties
-      bird.reset(0.3 * game.world.width, game.world.height / 2);
-      bird.angle = 0;
-      bird.animations.play("fly");
+        // Reset bird's position and properties
+        bird.reset(0.3 * r.world.width, r.world.height / 2);
+        bird.angle = 0;
+        bird.animations.play("fly");
 
-      // Remove all tubes and invisible obstacles
-      tubes.removeAll();
-      invs.removeAll();
-    };
+        // Remove all tubes and invisible obstacles
+        tubes.removeAll();
+        invs.removeAll();
+      }),
+      (l = function () {
+        (bird.body.allowGravity = !0), (bird.body.gravity.y = GRAVITY), (tubesTimer = r.time.events.loop(1 / SPAWN_RATE, f)), scoreText.setText(score), (instText.renderable = !1), (gameStarted = !0);
+      }),
+      (h = function () {
+        var tween;
 
-    // Function to start the game
-    startGame = function () {
-      if (gummy_lives == 0) {
-        return;
-      }
-      bird.body.allowGravity = true;
-      bird.body.gravity.y = GRAVITY;
-      tubesTimer = game.time.events.loop(1 / SPAWN_RATE, spawnTubes);
-      scoreText.setText(score);
-      instText.renderable = false;
-      gameStarted = true;
-    };
+        if (gameStarted) {
+          if (gameOver) {
+            // If the game is over, make the bird fall and rotate to 90 degrees
+            tween = r.add.tween(bird).to({ angle: 90 }, 100, Phaser.Easing.Bounce.Out, true);
 
-    // Function to update the game state
-    updateGame = function () {
-      var tween;
+            // Check if the bird has hit the ground
+            if (bird.body.bottom >= GROUND_Y + 3) {
+              bird.y = GROUND_Y - 13;
+              bird.body.velocity.y = 0;
+              bird.body.allowGravity = false;
+              bird.body.gravity.y = 0;
+            }
+          } else {
+            // Update bird's angle based on velocity
+            bird.angle = (90 * (FLAP + bird.body.velocity.y)) / FLAP - 180;
 
-      if (gameStarted) {
-        if (gameOver) {
-          // If the game is over, make the bird fall and rotate to 90 degrees
-          tween = game.add.tween(bird).to({ angle: 90 }, 100, Phaser.Easing.Bounce.Out, true);
+            // Limit the bird's angle
+            if (bird.angle < -30) {
+              bird.angle = -30;
+            }
+            if (bird.angle > 80) {
+              bird.angle = 90;
+              bird.animations.stop();
+              bird.frame = 1;
+            } else {
+              bird.animations.play();
+            }
 
-          // Check if the bird has hit the ground
-          if (bird.body.bottom >= GROUND_Y + 3) {
-            bird.y = GROUND_Y - 13;
-            bird.body.velocity.y = 0;
-            bird.body.allowGravity = false;
-            bird.body.gravity.y = 0;
+            // Check for collisions with tubes and handle game over
+            r.physics.overlap(bird, tubes, function () {
+              u();
+              fallSnd.play();
+            });
+
+            // Check if the bird has hit the ground and handle game over
+            if (!gameOver && bird.body.bottom >= GROUND_Y) {
+              u();
+            }
+
+            // Check for collisions with invisible obstacles
+            r.physics.overlap(bird, invs, e);
           }
         } else {
-          // Update bird's angle based on velocity
-          bird.angle = (90 * (FLAP + bird.body.velocity.y)) / FLAP - 180;
-
-          // Limit the bird's angle
-          if (bird.angle < -30) {
-            bird.angle = -30;
-          }
-          if (bird.angle > 80) {
-            bird.angle = 90;
-            bird.animations.stop();
-            bird.frame = 1;
-          } else {
-            bird.animations.play();
-          }
-
-          // Check for collisions with tubes and handle game over
-          game.physics.overlap(bird, tubes, function () {
-            endGame();
-            fallSnd.play();
-          });
-
-          // Check if the bird has hit the ground and handle game over
-          if (!gameOver && bird.body.bottom >= GROUND_Y) {
-            endGame();
-          }
-
-          // Check for collisions with invisible obstacles
-          game.physics.overlap(bird, invs, handleInvCollision);
+          // If the game has not started, make the bird hover
+          bird.y = r.world.height / 2 + 8 * Math.cos(r.time.now / 200);
+          bird.angle = 0;
         }
-      } else {
-        // If the game has not started, make the bird hover
-        bird.y = game.world.height / 2 + 8 * Math.cos(game.time.now / 200);
-        bird.angle = 0;
-      }
 
-      // Move the ground unless the game is over
-      if (!gameOver) {
-        ground.tilePosition.x -= game.time.physicsElapsed * SPEED;
-      }
-    };
-
-    // Function to render debug information
-    debugRender = function () {
-      if (DEBUG) {
-        game.debug.renderSpriteBody(bird);
-        tubes.forEachAlive(function (tube) {
-          game.debug.renderSpriteBody(tube);
-        });
-        invs.forEach(function (inv) {
-          game.debug.renderSpriteBody(inv);
-        });
-      }
-    };
-
-    // Game configuration object
-    gameConfig = {
-      preload: preloadAssets,
-      create: createGame,
-      update: updateGame,
-      render: debugRender,
-    };
-
-    // Initialize the game
-    game = new Phaser.Game(WIDTH, HEIGHT, Phaser.CANVAS, parent, gameConfig, false, false);
+        // Move the ground unless the game is over
+        if (!gameOver) {
+          ground.tilePosition.x -= r.time.physicsElapsed * SPEED;
+        }
+      }),
+      (s = function () {
+        DEBUG &&
+          (r.debug.renderSpriteBody(bird),
+          tubes.forEachAlive(function (e) {
+            r.debug.renderSpriteBody(e);
+          }),
+          invs.forEach(function (e) {
+            r.debug.renderSpriteBody(e);
+          }));
+      }),
+      (c = { preload: i, create: t, update: h, render: s }),
+      (r = new Phaser.Game(WIDTH, HEIGHT, Phaser.CANVAS, parent, c, !1, !1));
   }),
   (WebFontConfig = { google: { families: ["Press+Start+2P::latin"] }, active: main }),
   (function () {

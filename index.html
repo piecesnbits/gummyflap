@@ -34,9 +34,15 @@
       var game_title = "Gummy Flap";
       var game_instructions = "Tap/Click to Jump";
 
+      var gummy_lives = 3;
+
       var game_over = "GAMEOVER";
       var high_score = "HIGHEST SCORE";
       var try_again = "try again";
+      function updateLives() {
+        gummy_lives--;
+        return gummy_lives;
+      }
       function inIframe() {
         try {
           return window.self !== window.top;
@@ -71,8 +77,14 @@
         text-align: center;
         color: white;
         font-size: 24px;
-        top: 50%;
-        display: none;
+        top: 30%;
+        /* display: none; */
+      }
+      .center {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 15%;
       }
     </style>
 
@@ -84,7 +96,10 @@
   </head>
 
   <body style="background-color: black">
-    <div id="loading">Loading...</div>
+    <div id="loading">
+      <img src="./default/gummy_spin.gif" class="center" />
+      <div>Loading...</div>
+    </div>
     <div id="screen"></div>
   </body>
 
